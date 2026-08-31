@@ -1,3 +1,270 @@
-import React,{useEffect,useState} from 'react'; import{createRoot}from'react-dom/client'; import'./styles.css';
-type Product={id:string;name:string;description:string;price:{amount:string;currency:string};available:boolean};
-function App(){const[items,setItems]=useState<Product[]>([]);const[cart,setCart]=useState(0);const[error,setError]=useState('');useEffect(()=>{const base=import.meta.env.VITE_HEADLESS_API_URL;const url=base?`${base.replace(/\/$/,'')}/v1/headless/products`:'/products.json';fetch(url,{headers:base?{'x-publishable-key':import.meta.env.VITE_HEADLESS_PUBLISHABLE_KEY??''}:{}}).then(r=>{if(!r.ok)throw new Error('Catalog unavailable');return r.json()}).then(v=>setItems(v.data)).catch(e=>setError(e.message))},[]);return <><header><b>TRAIL/REACT</b><span aria-live="polite">Cart {cart}</span></header><main><section><p className="eyebrow">HEADLESS BY DESIGN</p><h1>Pack smart.<br/>Move freely.</h1></section>{error&&<p role="alert">{error}</p>}<div className="grid" aria-label="Products">{items.map(p=><article key={p.id}><div className="art">◆</div><h2>{p.name}</h2><p>{p.description}</p><strong>{new Intl.NumberFormat('en-US',{style:'currency',currency:p.price.currency}).format(Number(p.price.amount))}</strong><button disabled={!p.available} onClick={()=>setCart(x=>x+1)}>Add {p.name} to cart</button></article>)}</div></main></>};createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+import React, { FormEvent, useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
+
+type Product = {
+  id: string;
+  name: string;
+  description: string;
+  available: boolean;
+  price: { amount: string; currency: string };
+};
+type Cart = { items: Array<{ id: string; quantity: number }> };
+type Checkout = {
+  shippingOptions: Array<{
+    id: string;
+    name: string;
+    amount: string;
+    currency: string;
+  }>;
+  paymentMethods: Array<{ id: string; name: string }>;
+  selectedShippingMethodId: string | null;
+  selectedPaymentMethodId: string | null;
+  ready: boolean;
+  missing: string[];
+};
+const base = (import.meta.env.VITE_HEADLESS_API_URL ?? "").replace(/\/$/, "");
+const key = import.meta.env.VITE_HEADLESS_PUBLISHABLE_KEY ?? "";
+const apiHeaders = (token?: string, json = false) => ({
+  "x-publishable-key": key,
+  ...(token ? { "x-cart-token": token } : {}),
+  ...(json ? { "content-type": "application/json" } : {}),
+});
+
+function App() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<Cart>({ items: [] });
+  const [token, setToken] = useState(
+    () => sessionStorage.getItem("headless-cart-token") ?? "",
+  );
+  const [checkout, setCheckout] = useState<Checkout | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    fetch(base ? `${base}/v1/headless/products` : "/products.json", {
+      headers: base ? apiHeaders() : {},
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("Catalog unavailable");
+        return r.json();
+      })
+      .then((v) => setProducts(v.data))
+      .catch((e) => setError(e.message));
+  }, []);
+  async function cartToken() {
+    if (token) return token;
+    const response = await fetch(`${base}/v1/headless/carts`, {
+      method: "POST",
+      headers: apiHeaders(),
+    });
+    if (!response.ok) throw new Error("Cart unavailable");
+    const value = await response.json();
+    setToken(value.cartToken);
+    sessionStorage.setItem("headless-cart-token", value.cartToken);
+    return value.cartToken as string;
+  }
+  async function add(product: Product) {
+    if (!base) {
+      setCart((c) => ({
+        items: [...c.items, { id: product.id, quantity: 1 }],
+      }));
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const current = await cartToken();
+      const response = await fetch(`${base}/v1/headless/carts/current/items`, {
+        method: "POST",
+        headers: apiHeaders(current, true),
+        body: JSON.stringify({ productId: product.id, quantity: 1 }),
+      });
+      if (!response.ok) throw new Error("Item could not be added");
+      setCart((await response.json()).data);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function prepare(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!base) {
+      setCheckout({
+        shippingOptions: [],
+        paymentMethods: [],
+        selectedShippingMethodId: null,
+        selectedPaymentMethodId: null,
+        ready: false,
+        missing: ["Live sandbox required"],
+      });
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const data = new FormData(event.currentTarget);
+      const current = await cartToken();
+      const address = {
+        firstName: String(data.get("firstName")),
+        lastName: String(data.get("lastName")),
+        email: String(data.get("email")),
+        address1: String(data.get("address1")),
+        city: String(data.get("city")),
+        state: String(data.get("state")),
+        postalCode: String(data.get("postalCode")),
+        country: String(data.get("country")),
+      };
+      const response = await fetch(
+        `${base}/v1/headless/carts/current/checkout`,
+        {
+          method: "PATCH",
+          headers: apiHeaders(current, true),
+          body: JSON.stringify({
+            customerInfo: {
+              firstName: address.firstName,
+              lastName: address.lastName,
+              email: address.email,
+            },
+            billingAddress: address,
+            shippingAddress: { sameAsBilling: true },
+          }),
+        },
+      );
+      if (!response.ok) throw new Error("Checkout preparation failed");
+      setCheckout((await response.json()).data);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function select(
+    kind: "shipping-method" | "payment-method",
+    id: string,
+  ) {
+    const response = await fetch(
+      `${base}/v1/headless/carts/current/checkout/${kind}`,
+      {
+        method: "PUT",
+        headers: apiHeaders(token, true),
+        body: JSON.stringify({ id }),
+      },
+    );
+    if (!response.ok) {
+      setError("Selection failed");
+      return;
+    }
+    setCheckout((await response.json()).data);
+  }
+  return (
+    <>
+      <header>
+        <b>TRAIL/REACT</b>
+        <span aria-live="polite">Cart {cart.items.length}</span>
+      </header>
+      <main>
+        <section>
+          <p className="eyebrow">HEADLESS BY DESIGN</p>
+          <h1>
+            Pack smart.
+            <br />
+            Move freely.
+          </h1>
+        </section>
+        {error && <p role="alert">{error}</p>}
+        <div className="grid" aria-label="Products">
+          {products.map((p) => (
+            <article key={p.id}>
+              <div className="art">◆</div>
+              <h2>{p.name}</h2>
+              <p>{p.description}</p>
+              <strong>
+                {new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: p.price.currency,
+                }).format(Number(p.price.amount))}
+              </strong>
+              <button data-product-id={p.id} disabled={!p.available || busy} onClick={() => add(p)}>
+                Add {p.name} to cart
+              </button>
+            </article>
+          ))}
+        </div>
+        {cart.items.length > 0 && (
+          <section className="checkout">
+            <h2>Prepare checkout</h2>
+            <p>
+              Preparation only—this starter does not place an order or collect
+              payment.
+            </p>
+            <form onSubmit={prepare}>
+              {[
+                ["firstName", "First name"],
+                ["lastName", "Last name"],
+                ["email", "Email"],
+                ["address1", "Address"],
+                ["city", "City"],
+                ["state", "State / province"],
+                ["postalCode", "Postal code"],
+                ["country", "Country code"],
+              ].map(([name, label]) => (
+                <label key={name}>
+                  {label}
+                  <input
+                    name={name}
+                    type={name === "email" ? "email" : "text"}
+                    defaultValue={name === "country" ? "CA" : ""}
+                    required
+                  />
+                </label>
+              ))}
+              <button disabled={busy}>Load checkout choices</button>
+            </form>
+            {checkout && (
+              <div aria-label="Checkout preparation">
+                <h3>{checkout.ready ? "Ready for handoff" : "Still needed"}</h3>
+                <p>{checkout.missing.join(", ") || "No preparation gaps"}</p>
+                <label>
+                  Shipping
+                  <select
+                    aria-label="Shipping method"
+                    value={checkout.selectedShippingMethodId ?? ""}
+                    onChange={(e) => select("shipping-method", e.target.value)}
+                  >
+                    <option value="">Choose shipping</option>
+                    {checkout.shippingOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.name} — {option.amount} {option.currency}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Payment
+                  <select
+                    aria-label="Payment method"
+                    value={checkout.selectedPaymentMethodId ?? ""}
+                    onChange={(e) => select("payment-method", e.target.value)}
+                  >
+                    <option value="">Choose payment</option>
+                    {checkout.paymentMethods.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+          </section>
+        )}
+      </main>
+    </>
+  );
+}
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);

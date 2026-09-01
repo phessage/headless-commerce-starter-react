@@ -1,7 +1,22 @@
 # 1Ecomm React Storefront Starter
 
-Vite + React reference storefront for catalog, token-owned carts, checkout preparation, and idempotent non-hosted order placement, with Tailwind CSS and real Playwright browser tests. It never collects payment.
+This is a ready-to-run React + Vite shop. It shows products, maintains a shopper cart, collects checkout details, displays 1Ecomm shipping/payment choices, and can create a pending non-hosted order. It never charges a card or wallet.
 
-Set `storeId` in `public/headless-config.json`, then run `npm install && npm run check`. No source edit or publishable-key lookup is required: the app resolves the store's public runtime document and runs catalog, anonymous cart, checkout preparation, and a pending-order journey when the store exposes a non-hosted payment method. `bootstrapUrl` normally remains `https://api.1ecomm.com`.
+## Run it
 
-See [architecture](docs/architecture.md) and [sandbox policy](docs/sandbox.md).
+1. Install Node.js 20 or newer.
+2. Open `public/headless-config.json`.
+3. Replace only `storeId` with your provisioned 1Ecomm store ID. The included ID is a safe test fixture.
+4. Run:
+
+```bash
+npm ci
+npm run check
+npm run dev
+```
+
+5. Open the local address printed by Vite. You should see real products from the selected store. No API URL, publishable-key lookup, or source-code change is required.
+
+`npm run check` performs a production build and launches the application for a browser smoke test. `npm run test:e2e:live` goes further: it creates an isolated fixture cart and pending bank-transfer test order against the deployed API. It does not move money.
+
+The configuration contains public values only. Never add an administrator password or secret API key. For production limitations and architecture, see [architecture](docs/architecture.md) and [sandbox policy](docs/sandbox.md).

@@ -2,6 +2,6 @@
 
 Vite + React reference storefront for catalog, token-owned carts and checkout preparation, with Tailwind CSS, deterministic synthetic fixtures, and real Playwright browser tests. Checkout preparation never places an order or collects payment.
 
-Run `npm install && npm run check`. Set `VITE_HEADLESS_API_URL` and `VITE_HEADLESS_PUBLISHABLE_KEY` only for an approved public sandbox; never place confidential keys in `VITE_` variables.
+Set `storeId` in `public/headless-config.json`, then run `npm install && npm run check`. No source edit or publishable-key lookup is required: the app resolves the store's public runtime document and runs catalog, anonymous cart and checkout preparation. `bootstrapUrl` normally remains `https://api.1ecomm.com`.
 
 See [architecture](docs/architecture.md) and [sandbox policy](docs/sandbox.md).

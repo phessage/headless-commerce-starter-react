@@ -23,7 +23,7 @@ test("places and renders a real non-hosted order", async ({
   await expect(page.getByText("Cart 1")).toBeVisible();
   await page.getByLabel("First name").fill("Headless");
   await page.getByLabel("Last name").fill("Fixture");
-  await page.getByLabel("Email").fill("react-live@example.test");
+  await page.getByLabel("Email", { exact: true }).fill("react-live@example.test");
   await page.getByLabel("Address").fill("1 Test Way");
   await page.getByLabel("City").fill("Vancouver");
   await page.getByLabel("State / province").fill("BC");

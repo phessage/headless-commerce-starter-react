@@ -38,6 +38,13 @@ type Order = {
   paymentStatus: string;
   requiresPayment: false;
 };
+type OrderStatus = {
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  tracking: Record<string, unknown> | null;
+  items: Array<{ productName: string; quantity: number; fulfillmentStatus?: string | null }>;
+};
 const apiHeaders = (runtime: Runtime, token?: string, json = false) => ({
   "x-publishable-key": runtime.publishableKey,
   ...(token ? { "x-cart-token": token } : {}),
@@ -53,6 +60,7 @@ function App() {
   );
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus | null>(null);
   const [orderIntent, setOrderIntent] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -208,6 +216,30 @@ function App() {
       setBusy(false);
     }
   }
+  async function lookupOrder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!runtime) return setError("Store configuration is not ready");
+    setBusy(true);
+    setError("");
+    setOrderStatus(null);
+    try {
+      const data = new FormData(event.currentTarget);
+      const response = await fetch(`${runtime.apiUrl}/v1/headless/orders/lookup`, {
+        method: "POST",
+        headers: apiHeaders(runtime, undefined, true),
+        body: JSON.stringify({
+          orderNumber: String(data.get("orderNumber")),
+          email: String(data.get("orderEmail")),
+        }),
+      });
+      if (!response.ok) throw new Error("We could not find an order with those details");
+      setOrderStatus((await response.json()).data);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <header>
@@ -322,6 +354,23 @@ function App() {
             )}
           </section>
         )}
+        <section className="checkout" aria-label="Find an order">
+          <h2>Find your order</h2>
+          <p>Use the order number and the email entered at checkout.</p>
+          <form onSubmit={lookupOrder}>
+            <label>Order number<input name="orderNumber" required /></label>
+            <label>Order email<input name="orderEmail" type="email" required /></label>
+            <button disabled={busy}>Check order status</button>
+          </form>
+          {orderStatus && (
+            <div aria-label="Order status">
+              <h3>Order {orderStatus.orderNumber}</h3>
+              <p>Status: {orderStatus.status}</p>
+              <p>Payment: {orderStatus.paymentStatus}</p>
+              <p>{orderStatus.tracking ? "Tracking is available" : "Tracking is not available yet"}</p>
+            </div>
+          )}
+        </section>
       </main>
     </>
   );

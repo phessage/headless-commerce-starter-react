@@ -23,7 +23,7 @@ test("places and renders a real non-hosted order", async ({
   await expect(page.getByText("Cart 1")).toBeVisible();
   await page.getByLabel("First name").fill("Headless");
   await page.getByLabel("Last name").fill("Fixture");
-  await page.getByLabel("Email").fill("react-live@example.test");
+  await page.getByLabel("Email", { exact: true }).fill("react-live@example.test");
   await page.getByLabel("Address").fill("1 Test Way");
   await page.getByLabel("City").fill("Vancouver");
   await page.getByLabel("State / province").fill("BC");
@@ -70,4 +70,18 @@ test("places and renders a real non-hosted order", async ({
   await expect(
     page.getByRole("heading", { name: new RegExp(`Order ${body.data.orderNumber} placed`) }),
   ).toBeVisible();
+  await page.reload();
+  await page.getByLabel("Order number").fill(body.data.orderNumber);
+  await page.getByLabel("Order email").fill("react-live@example.test");
+  const lookedUp = page.waitForResponse(
+    (lookupResponse) =>
+      lookupResponse.url().endsWith("/v1/headless/orders/lookup") &&
+      lookupResponse.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Check order status" }).click();
+  const lookupResponse = await lookedUp;
+  const lookupBody = await lookupResponse.json();
+  expect(lookupResponse.status(), JSON.stringify(lookupBody)).toBe(201);
+  expect(lookupBody.data.orderNumber).toBe(body.data.orderNumber);
+  await expect(page.getByRole("heading", { name: `Order ${body.data.orderNumber}` })).toBeVisible();
 });

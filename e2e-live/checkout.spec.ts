@@ -55,4 +55,18 @@ test("prepares a real fixture cart and selects server choices", async ({
   await payment.selectOption({ index: 1 });
   await paymentSelected;
   await expect(page.getByText("No preparation gaps")).toBeVisible();
+  const placed = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/checkout/order") &&
+      response.request().method() === "POST" &&
+      response.status() === 201,
+  );
+  await page.getByRole("button", { name: "Place pending order" }).click();
+  const response = await placed;
+  const body = await response.json();
+  expect(body.data.requiresPayment).toBe(false);
+  expect(body.data.paymentStatus).toBe("pending");
+  await expect(
+    page.getByRole("heading", { name: new RegExp(`Order ${body.data.orderNumber} placed`) }),
+  ).toBeVisible();
 });

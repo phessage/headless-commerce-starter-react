@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("prepares a real fixture cart and selects server choices", async ({
+test("places and renders a real non-hosted order", async ({
   page,
 }) => {
   const catalog = page.waitForResponse(
@@ -58,14 +58,15 @@ test("prepares a real fixture cart and selects server choices", async ({
   const placed = page.waitForResponse(
     (response) =>
       response.url().endsWith("/checkout/order") &&
-      response.request().method() === "POST" &&
-      response.status() === 201,
+      response.request().method() === "POST",
   );
   await page.getByRole("button", { name: "Place pending order" }).click();
   const response = await placed;
   const body = await response.json();
+  expect(response.status(), JSON.stringify(body)).toBe(201);
   expect(body.data.requiresPayment).toBe(false);
   expect(body.data.paymentStatus).toBe("pending");
+  console.log(`React live order: ${body.data.orderNumber}`);
   await expect(
     page.getByRole("heading", { name: new RegExp(`Order ${body.data.orderNumber} placed`) }),
   ).toBeVisible();

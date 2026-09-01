@@ -17,13 +17,27 @@ type Checkout = {
     amount: string;
     currency: string;
   }>;
-  paymentMethods: Array<{ id: string; name: string }>;
+  paymentMethods: Array<{
+    id: string;
+    name: string;
+    capabilities?: {
+      requiresHostedCheckout?: boolean;
+      canPlaceOrder?: boolean;
+    };
+  }>;
   selectedShippingMethodId: string | null;
   selectedPaymentMethodId: string | null;
   ready: boolean;
   missing: string[];
 };
 type Runtime = { storeId: string; apiUrl: string; publishableKey: string };
+type Order = {
+  orderId: string;
+  orderNumber: string;
+  status: string;
+  paymentStatus: string;
+  requiresPayment: false;
+};
 const apiHeaders = (runtime: Runtime, token?: string, json = false) => ({
   "x-publishable-key": runtime.publishableKey,
   ...(token ? { "x-cart-token": token } : {}),
@@ -38,6 +52,8 @@ function App() {
     () => sessionStorage.getItem("headless-cart-token") ?? "",
   );
   const [checkout, setCheckout] = useState<Checkout | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [orderIntent, setOrderIntent] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -153,6 +169,45 @@ function App() {
     }
     setCheckout((await response.json()).data);
   }
+  async function placeOrder() {
+    if (!runtime || !checkout?.ready) return setError("Checkout is not ready");
+    const selected = checkout.paymentMethods.find(
+      (method) => method.id === checkout.selectedPaymentMethodId,
+    );
+    if (
+      selected?.capabilities?.requiresHostedCheckout !== false ||
+      selected.capabilities.canPlaceOrder !== true
+    ) return setError("Choose a supported non-hosted payment method");
+    setBusy(true);
+    setError("");
+    const intent = orderIntent || crypto.randomUUID();
+    setOrderIntent(intent);
+    try {
+      const response = await fetch(
+        `${runtime.apiUrl}/v1/headless/carts/current/checkout/order`,
+        {
+          method: "POST",
+          headers: {
+            ...apiHeaders(runtime, token),
+            "Idempotency-Key": intent,
+          },
+        },
+      );
+      if (!response.ok) {
+        const problem = await response.json().catch(() => null) as
+          | { detail?: string; title?: string }
+          | null;
+        throw new Error(
+          problem?.detail ?? problem?.title ?? `Order placement failed (${response.status})`,
+        );
+      }
+      setOrder((await response.json()).data);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <header>
@@ -191,8 +246,8 @@ function App() {
           <section className="checkout">
             <h2>Prepare checkout</h2>
             <p>
-              Preparation only—this starter does not place an order or collect
-              payment.
+              Prepare checkout and place an order with a server-approved
+              non-hosted payment method. This starter never collects payment.
             </p>
             <form onSubmit={prepare}>
               {[
@@ -251,6 +306,18 @@ function App() {
                     ))}
                   </select>
                 </label>
+                {!order && (
+                  <button disabled={!checkout.ready || busy} onClick={placeOrder}>
+                    Place pending order
+                  </button>
+                )}
+                {order && (
+                  <section aria-label="Order confirmation">
+                    <h3>Order {order.orderNumber} placed</h3>
+                    <p>Status: {order.status}</p>
+                    <p>Payment: {order.paymentStatus}</p>
+                  </section>
+                )}
               </div>
             )}
           </section>

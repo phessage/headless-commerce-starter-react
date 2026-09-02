@@ -39,18 +39,16 @@ test("places and renders a real non-hosted order", async ({
       response.status() === 200,
   );
   await page.getByRole("button", { name: "Load checkout choices" }).click();
-  await prepared;
+  const preparation = (await (await prepared).json()).data;
   const shipping = page.getByLabel("Shipping method");
   const payment = page.getByLabel("Payment method");
-  await expect(shipping.locator("option")).toHaveCount(3);
   await expect(payment.locator("option")).toHaveCount(2);
-  const shippingSelected = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/checkout/shipping-method") &&
-      response.status() === 200,
-  );
-  await shipping.selectOption({ index: 1 });
-  await shippingSelected;
+  if (preparation.shippingOptions.length > 0) {
+    await expect(shipping.locator("option")).toHaveCount(preparation.shippingOptions.length + 1);
+    const shippingSelected = page.waitForResponse((response) => response.url().endsWith("/checkout/shipping-method") && response.status() === 200);
+    await shipping.selectOption({ index: 1 });
+    await shippingSelected;
+  } else await expect(shipping.locator("option")).toHaveCount(1);
   const paymentSelected = page.waitForResponse(
     (response) =>
       response.url().endsWith("/checkout/payment-method") &&

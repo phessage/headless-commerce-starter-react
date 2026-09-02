@@ -2,6 +2,8 @@
 
 This is a ready-to-run React + Vite shop. It shows products, maintains a shopper cart, collects checkout details, displays 1Ecomm shipping/payment choices, can create a pending non-hosted order, and lets a guest reopen that order's current status using the order number and checkout email. It never charges a card or wallet.
 
+It fails closed when bootstrap or catalog APIs are unavailable; it never substitutes bundled products. Playwright provides request-scoped fixtures only inside tests.
+
 ## Run it
 
 1. Install Node.js 20 or newer.

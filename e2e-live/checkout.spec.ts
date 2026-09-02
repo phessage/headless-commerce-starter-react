@@ -3,6 +3,10 @@ import { expect, test } from "@playwright/test";
 test("places and renders a real non-hosted order", async ({
   page,
 }) => {
+  const productId = process.env.HEADLESS_PRODUCT_ID;
+  const publishableKey = process.env.HEADLESS_PUBLISHABLE_KEY;
+  if (!productId || !publishableKey) throw new Error("Allocated fixture environment is required");
+  await page.route("**/v1/headless/stores/**", (route) => route.fulfill({ json: { data: { storeId: process.env.HEADLESS_STORE_ID, apiUrl: process.env.HEADLESS_API_URL, publishableKey, apiVersion: "v1", capabilities: ["catalog", "cart", "checkout-preparation"] } } }));
   const catalog = page.waitForResponse(
     (response) =>
       response.url().endsWith("/v1/headless/products") &&
@@ -11,7 +15,7 @@ test("places and renders a real non-hosted order", async ({
   await page.goto("/");
   await catalog;
   const add = page.locator(
-    'button[data-product-id="1f7884bd-759d-4f47-9fdb-c7ea3dd3a9ef"]',
+    `button[data-product-id="${productId}"]`,
   );
   const added = page.waitForResponse(
     (response) =>

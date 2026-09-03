@@ -9,6 +9,8 @@ It fails closed when bootstrap or catalog APIs are unavailable; it never substit
 1. Install Node.js 20 or newer.
 2. Open `public/headless-config.json`.
 3. Replace only `storeId` with your provisioned 1Ecomm store ID. The included ID is a safe test fixture.
+
+The required CI browser gate allocates its own expiring fixture, drives the real deployed catalog/cart/checkout/order/lookup APIs through this UI, and always revokes the temporary key. Local merchant setup remains store-ID-only.
 4. Run:
 
 ```bash

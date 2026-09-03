@@ -17,6 +17,10 @@ The canonical API is `phessage/ecommerce-service/contracts/headless-commerce-v1.
 - Tailwind is an implementation tool, not a substitute for reusable semantic components. Keep global tokens in the existing stylesheet.
 - Vite 8 requires Node 20.19+ or a supported newer line. Stable dependency upgrades must update the lockfile.
 
+## License boundary
+
+`LICENSE.md` allows authorized 1Ecomm customer projects and deployed shopper applications, but prohibits redistribution of this reusable starter or its derivatives. Preserve the notice in clones, generated projects and documentation. Do not describe this repository as open source or grant broader rights in examples.
+
 ## Security and completion
 
 The current browser token storage is reference-only. Production work should prefer a BFF/HttpOnly session or document the XSS threat. Never log tokens, order proof or addresses. Allow only HTTPS production API origins.

@@ -1,5 +1,9 @@
 # 1Ecomm React Storefront Starter
 
+<!-- 1ecomm-discovery -->
+> Part of **[1Ecomm headless commerce](https://www.1ecomm.com/headless-commerce)** — catalog, cart, checkout and order APIs for custom storefronts and apps.
+> Fastest start: `npm create @1ecomm/storefront@latest` · [CLI guide](https://www.1ecomm.com/headless-commerce/cli.html) · [OpenAPI contract](https://www.1ecomm.com/headless-commerce/openapi.yaml) · [All starters and SDKs](https://www.1ecomm.com/headless-commerce#starters)
+
 Free for authorized 1Ecomm customers and their developers to build and operate 1Ecomm-connected storefronts. You may deploy the finished store, but may not redistribute, resell, sublicense, mirror, or republish this starter or a reusable derivative. See [LICENSE.md](LICENSE.md).
 
 This is a ready-to-run React + Vite shop. It shows products, maintains a shopper cart, collects checkout details, displays 1Ecomm shipping/payment choices, can create a pending non-hosted order, and lets a guest reopen that order's current status using the order number and checkout email. It never charges a card or wallet.

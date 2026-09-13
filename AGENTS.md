@@ -6,7 +6,7 @@ Read this file, `README.md`, `docs/architecture.md`, `docs/sandbox.md`, `src/mai
 
 This React 19 + Vite 8 + Tailwind CSS 4 project is a runnable reference for the 1Ecomm headless preview, not a complete production store. `public/headless-config.json` contains one `storeId`; runtime bootstrap discovers publishable connection values and fails closed. Never add synthetic fallback commerce data or embed an administrative secret.
 
-The canonical API is `phessage/ecommerce-service/contracts/headless-commerce-v1.openapi.yaml`. Preserve key-derived tenant scope, bearer cart-token secrecy, server-computed totals/options, capability-gated non-hosted orders, stable idempotency keys, and neutral guest lookup. Do not invent response fields; order line count is `items.length`.
+The canonical API is `https://www.1ecomm.com/headless-commerce/openapi.yaml`. Preserve key-derived tenant scope, bearer cart-token secrecy, server-computed totals/options, capability-gated non-hosted orders, stable idempotency keys, and neutral guest lookup. Do not invent response fields; order line count is `items.length`.
 
 ## React/Vite/Tailwind rules
 
